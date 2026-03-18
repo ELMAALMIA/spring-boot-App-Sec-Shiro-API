@@ -1,5 +1,7 @@
 package com.dev.app.config;
 
+import com.dev.app.interceptor.RateLimitInterceptor;
+import com.dev.app.web.resolver.CurrentUserArgumentResolver;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;

@@ -1,4 +1,4 @@
-package com.dev.app.config;
+package com.dev.app.logging;
 
 import ch.qos.logback.classic.pattern.MessageConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;

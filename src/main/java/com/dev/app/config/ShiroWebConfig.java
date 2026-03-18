@@ -1,5 +1,6 @@
 package com.dev.app.config;
 
+import com.dev.app.filter.ShiroSessionFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.shiro.mgt.DefaultSecurityManager;
 import org.apache.shiro.mgt.SecurityManager;

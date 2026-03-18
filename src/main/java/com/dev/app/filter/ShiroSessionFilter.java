@@ -1,4 +1,4 @@
-package com.dev.app.config;
+package com.dev.app.filter;
 
 import com.dev.app.enums.RoleName;
 import com.fasterxml.jackson.databind.ObjectMapper;

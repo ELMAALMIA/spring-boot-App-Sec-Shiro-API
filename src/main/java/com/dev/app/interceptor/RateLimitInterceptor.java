@@ -1,4 +1,4 @@
-package com.dev.app.config;
+package com.dev.app.interceptor;
 
 import com.dev.app.annotation.RateLimit;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Entries expire lazily: a key is reset when its window has elapsed.
  * For high-traffic production systems replace with a Redis-backed implementation.
  *
- * <p>Registered in {@link WebMvcConfig}.</p>
+ * <p>Registered in {@code WebMvcConfig}.</p>
  */
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {

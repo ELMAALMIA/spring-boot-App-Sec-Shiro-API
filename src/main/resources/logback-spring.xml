@@ -7,7 +7,7 @@
         tokens, and other @Sensitive-annotated field values are never written to logs.
     -->
     <conversionRule conversionWord="maskedMsg"
-                    converterClass="com.dev.app.config.SensitiveMaskingConverter"/>
+                    converterClass="com.dev.app.logging.SensitiveMaskingConverter"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>

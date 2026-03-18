@@ -1,6 +1,7 @@
 package com.dev.app.config;
 
 import com.dev.app.repository.UserRepository;
+import com.dev.app.security.realm.DatabaseRealm;
 import org.apache.shiro.authc.credential.DefaultPasswordService;
 import org.apache.shiro.authc.credential.PasswordMatcher;
 import org.apache.shiro.mgt.DefaultSecurityManager;

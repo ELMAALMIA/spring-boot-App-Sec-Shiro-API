@@ -1,4 +1,4 @@
-package com.dev.app.config;
+package com.dev.app.web.resolver;
 
 import com.dev.app.annotation.CurrentUser;
 import com.dev.app.exception.AuthenticationFailedException;
@@ -15,12 +15,12 @@ import org.springframework.web.method.support.ModelAndViewContainer;
  * Resolves {@code @CurrentUser String username} in controller method parameters.
  *
  * <p>Reads the authenticated principal from Shiro's ThreadContext (already bound
- * by {@link ShiroSessionFilter} before the request reaches the controller).</p>
+ * by {@link com.dev.app.filter.ShiroSessionFilter} before the request reaches the controller).</p>
  *
  * <p>Only supports {@code String} parameters annotated with {@link CurrentUser}.
  * Throws {@link AuthenticationFailedException} if no authenticated subject is found.</p>
  *
- * <p>Registered in {@link WebMvcConfig}.</p>
+ * <p>Registered in {@code WebMvcConfig}.</p>
  */
 @Component
 public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver {

@@ -1,4 +1,4 @@
-package com.dev.app.config;
+package com.dev.app.security.realm;
 
 import com.dev.app.enums.RoleName;
 import com.dev.app.repository.UserRepository;
@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  * </ul>
  *
  * <h3>Constructor injection</h3>
- * This bean is instantiated manually in {@link ShiroConfig}, so {@link UserRepository}
+ * This bean is instantiated manually in {@code ShiroConfig}, so {@link UserRepository}
  * is passed via the constructor — no {@code @Autowired} field injection needed.
  */
 public class DatabaseRealm extends AuthorizingRealm {

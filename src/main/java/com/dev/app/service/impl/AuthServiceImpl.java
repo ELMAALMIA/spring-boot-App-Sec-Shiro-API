@@ -7,6 +7,7 @@ import com.dev.app.entities.User;
 import com.dev.app.enums.RoleName;
 import com.dev.app.exception.AccountLockedException;
 import com.dev.app.exception.AuthenticationFailedException;
+import com.dev.app.exception.ResourceNotFoundException;
 import com.dev.app.repository.UserRepository;
 import com.dev.app.service.AuthService;
 import org.apache.shiro.SecurityUtils;
@@ -149,7 +150,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void unlockAccount(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+                .orElseThrow(() -> new ResourceNotFoundException("User", username));
         user.setFailedAttempts(0);
         user.setLockedUntil(null);
         userRepository.save(user);

@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter;
  * or can be manually unlocked by an admin via
  * {@code POST /api/v1/admin/users/{username}/unlock}.</p>
  */
-public class AccountLockedException extends RuntimeException {
+public class AccountLockedException extends AppException {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
 

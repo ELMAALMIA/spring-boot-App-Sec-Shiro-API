@@ -1,4 +1,4 @@
-package com.dev.app;
+package com.dev.app.bootstrap;
 
 import com.dev.app.entities.Role;
 import com.dev.app.enums.RoleName;
@@ -29,6 +29,8 @@ import java.util.Set;
  * <p>Passwords are stored using {@link DefaultPasswordService} which produces
  * a {@code $shiro2$SHA-512$50000$<salt>$<hash>} string — salted + iterated,
  * safe against rainbow-table and brute-force attacks.</p>
+ *
+ * <p>Only active when {@code app.seed-test-users=true} in application properties.</p>
  */
 @Component
 @ConditionalOnProperty(name = "app.seed-test-users", havingValue = "true")

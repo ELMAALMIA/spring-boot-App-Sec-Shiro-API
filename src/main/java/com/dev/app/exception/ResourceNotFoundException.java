@@ -3,7 +3,7 @@ package com.dev.app.exception;
 /**
  * Thrown when a requested resource (user, role, etc.) is not found.
  */
-public class ResourceNotFoundException extends RuntimeException {
+public class ResourceNotFoundException extends AppException {
 
     public ResourceNotFoundException(String resource, Long id) {
         super(resource + " not found with id: " + id);

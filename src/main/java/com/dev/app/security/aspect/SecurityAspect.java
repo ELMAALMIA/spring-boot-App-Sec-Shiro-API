@@ -1,4 +1,4 @@
-package com.dev.app.config;
+package com.dev.app.security.aspect;
 
 import com.dev.app.annotation.IsAdmin;
 import com.dev.app.annotation.IsUser;
@@ -33,8 +33,8 @@ import org.springframework.stereotype.Component;
  * other aspects on the same join point, guaranteeing security checks gate all business
  * logic regardless of future aspect additions.</p>
  *
- * <p>Relies on Shiro's Subject being bound to ThreadContext by {@link ShiroSessionFilter}
- * before the request reaches the controller layer.</p>
+ * <p>Relies on Shiro's Subject being bound to ThreadContext by
+ * {@link com.dev.app.filter.ShiroSessionFilter} before the request reaches the controller layer.</p>
  */
 @Aspect
 @Component
