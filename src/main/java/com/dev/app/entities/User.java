@@ -1,6 +1,7 @@
 package com.dev.app.entities;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -26,6 +27,14 @@ public class User {
     )
     private Set<Role> roles = new HashSet<>();
 
+    /** Number of consecutive failed login attempts. Reset to 0 on successful login. */
+    @Column(nullable = false)
+    private int failedAttempts = 0;
+
+    /** When set and in the future, the account is locked and login is rejected. */
+    @Column
+    private LocalDateTime lockedUntil;
+
     public Long getId() { return id; }
 
     public String getUsername() { return username; }
@@ -36,4 +45,14 @@ public class User {
 
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles; }
+
+    public int getFailedAttempts() { return failedAttempts; }
+    public void setFailedAttempts(int failedAttempts) { this.failedAttempts = failedAttempts; }
+
+    public LocalDateTime getLockedUntil() { return lockedUntil; }
+    public void setLockedUntil(LocalDateTime lockedUntil) { this.lockedUntil = lockedUntil; }
+
+    public boolean isLocked() {
+        return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
+    }
 }

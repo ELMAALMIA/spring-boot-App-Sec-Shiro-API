@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!--
+        Register the SensitiveMaskingConverter under the conversion word "maskedMsg".
+        Every log pattern uses %maskedMsg instead of %msg to guarantee that passwords,
+        tokens, and other @Sensitive-annotated field values are never written to logs.
+    -->
+    <conversionRule conversionWord="maskedMsg"
+                    converterClass="com.dev.app.config.SensitiveMaskingConverter"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %maskedMsg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Application debug logging -->
+    <logger name="com.dev.app" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Shiro internals — INFO only -->
+    <logger name="org.apache.shiro" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Hibernate SQL -->
+    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

@@ -22,7 +22,7 @@ import java.util.Set;
  * <p>Users created:</p>
  * <ul>
  *   <li>admin / admin123 — roles: ADMIN + USER</li>
- *   <li>alice / ayoub123 — roles: USER</li>
+ *   <li>ayoub / ayoub123 — roles: USER</li>
  * </ul>
  *
  * <p>Passwords are stored using {@link DefaultPasswordService} which produces
@@ -58,7 +58,7 @@ public class DataLoader implements CommandLineRunner {
         createUser("admin", "admin123", Set.of(adminRole, userRole));
         createUser("ayoub", "ayoub123", Set.of(userRole));
 
-        log.info("Test users seeded: admin/admin123 (ADMIN,USER) — alice/ayoub123 (USER)");
+        log.info("Test users seeded: admin/admin123 (ADMIN,USER) — ayoub/ayoub123 (USER)");
     }
 
     private Role createRole(RoleName name) {
