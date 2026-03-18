@@ -6,7 +6,6 @@ import com.dev.app.annotation.PermissionCheck;
 import com.dev.app.dto.response.MessageResponse;
 import com.dev.app.dto.response.UserInfoResponse;
 import com.dev.app.service.AuthService;
-import com.dev.app.service.impl.AuthServiceImpl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,20 +16,23 @@ import java.util.Map;
  *
  * <p>Protected at two levels:</p>
  * <ol>
- *   <li>URL filter: {@code /api/v1/admin/**} requires auth + ADMIN role ({@link com.dev.app.config.ShiroSessionFilter})</li>
- *   <li>Method annotation: {@link IsAdmin} via {@link com.dev.app.config.SecurityAspect} (AOP double-check)</li>
+ *   <li>URL filter: {@code /api/v1/admin/**} requires auth + ADMIN role
+ *       ({@link com.dev.app.config.ShiroSessionFilter})</li>
+ *   <li>Method annotation: {@link IsAdmin} via {@link com.dev.app.config.SecurityAspect}
+ *       (AOP double-check)</li>
  * </ol>
+ *
+ * <p>Depends only on the {@link AuthService} <em>interface</em> — never on
+ * {@code AuthServiceImpl} directly, satisfying the Dependency Inversion Principle.</p>
  */
 @RestController
 @RequestMapping("/api/v1/admin")
 public class AdminController {
 
     private final AuthService authService;
-    private final AuthServiceImpl authServiceImpl;
 
-    public AdminController(AuthService authService, AuthServiceImpl authServiceImpl) {
+    public AdminController(AuthService authService) {
         this.authService = authService;
-        this.authServiceImpl = authServiceImpl;
     }
 
     /**
@@ -58,7 +60,7 @@ public class AdminController {
     @PermissionCheck("admin:manage")
     public ResponseEntity<MessageResponse> unlockUser(@PathVariable String username,
                                                        @CurrentUser String adminUsername) {
-        authServiceImpl.unlockAccount(username);
+        authService.unlockAccount(username);
         return ResponseEntity.ok(
                 new MessageResponse("Account '" + username + "' unlocked by " + adminUsername)
         );

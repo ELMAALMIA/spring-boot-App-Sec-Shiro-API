@@ -18,13 +18,17 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Per-IP rate limiting interceptor for endpoints annotated with {@link RateLimit}.
  *
- * <p>Uses a sliding window per {@code IP:URI} key stored in a {@link ConcurrentHashMap}.
- * When the limit is exceeded, returns HTTP 429 with a JSON error body.</p>
+ * <h3>Thread-safety</h3>
+ * The decision (allowed / rate-limited) is made <em>entirely inside</em>
+ * {@link ConcurrentHashMap#compute}, which is atomic per key. A {@code boolean[]}
+ * capture is used because the check must be available outside the lambda, but the
+ * value is set exclusively inside the atomic block — no TOCTOU window.
+ *
+ * <h3>Memory</h3>
+ * Entries expire lazily: a key is reset when its window has elapsed.
+ * For high-traffic production systems replace with a Redis-backed implementation.
  *
  * <p>Registered in {@link WebMvcConfig}.</p>
- *
- * <p><b>Note:</b> In-memory store — state is lost on restart and not shared across
- * cluster nodes. For production, replace with a Redis-backed implementation.</p>
  */
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
@@ -52,17 +56,26 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         long now = System.currentTimeMillis();
         long windowMillis = (long) rl.windowSeconds() * 1000;
 
-        RateLimitEntry entry = store.compute(key, (k, v) -> {
+        /*
+         * The exceeded flag is set INSIDE compute(), which ConcurrentHashMap guarantees
+         * runs atomically per key. No other thread can interleave between the increment
+         * and the threshold check — eliminating the TOCTOU race condition.
+         */
+        boolean[] exceeded = {false};
+
+        store.compute(key, (k, v) -> {
             if (v == null || now - v.windowStart >= windowMillis) {
                 return new RateLimitEntry(now, 1);
             }
             v.count++;
+            if (v.count > rl.requests()) {
+                exceeded[0] = true;
+            }
             return v;
         });
 
-        if (entry.count > rl.requests()) {
-            log.warn("Rate limit exceeded: ip={} uri={} count={}", request.getRemoteAddr(),
-                    request.getRequestURI(), entry.count);
+        if (exceeded[0]) {
+            log.warn("Rate limit exceeded: ip={} uri={}", request.getRemoteAddr(), request.getRequestURI());
             sendTooManyRequests(response, rl);
             return false;
         }
@@ -81,7 +94,6 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         )));
     }
 
-    /** Mutable sliding-window entry stored per IP+URI key. */
     static class RateLimitEntry {
         long windowStart;
         int count;

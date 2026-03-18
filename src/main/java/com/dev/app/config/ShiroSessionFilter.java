@@ -1,5 +1,6 @@
 package com.dev.app.config;
 
+import com.dev.app.enums.RoleName;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,32 +24,36 @@ import java.util.Set;
 /**
  * Jakarta-native Shiro security filter.
  *
- * Replaces shiro-web's AbstractShiroFilter (which uses javax.servlet)
- * with a Spring OncePerRequestFilter (jakarta.servlet) that does the same job:
+ * <p>Replaces shiro-web's AbstractShiroFilter (javax.servlet) with a Spring
+ * {@link OncePerRequestFilter} (jakarta.servlet) that handles:</p>
+ * <ol>
+ *   <li>Bind SecurityManager + Subject to the current thread (ThreadContext)</li>
+ *   <li>Restore the authenticated session from the HTTP session (if any)</li>
+ *   <li>Enforce URL-based access rules (anon / authc / admin)</li>
+ *   <li>After the request, persist auth state back to the HTTP session</li>
+ *   <li>Session fixation prevention: rotate session ID on login</li>
+ *   <li>Always clean up the ThreadContext (even on exception)</li>
+ * </ol>
  *
- *  1. Binds SecurityManager + Subject to the current thread (ThreadContext)
- *  2. Restores the authenticated session from the HTTP session (if any)
- *  3. Enforces URL-based access rules (anon / authc / admin)
- *  4. After the request, persists auth state back to the HTTP session
- *  5. Cleans up the ThreadContext (always, even on error)
+ * <h3>ThreadContext safety</h3>
+ * Both {@code ThreadContext.bind()} calls are inside the {@code try} block,
+ * so the {@code finally} block's {@code ThreadContext.remove()} is always
+ * guaranteed to pair with them — no ThreadLocal leak on exception paths.
  *
- * How session state is kept between requests:
- *   On login  → AuthController calls subject.login(token)
- *              → filter saves subject.getPrincipals() to HTTP session
- *   On request → filter reads principals from HTTP session
- *              → rebuilds the Subject with those principals
- *              → binds it to ThreadContext so SecurityUtils.getSubject() works
- *   On logout  → AuthController calls subject.logout()
- *              → filter sees !isAuthenticated() and removes from HTTP session
+ * <h3>Session fixation prevention</h3>
+ * When a request transitions from unauthenticated → authenticated (i.e. a login),
+ * the old session is invalidated and a fresh session with a new ID is created.
+ * The servlet container issues a new {@code Set-Cookie: JSESSIONID} header via
+ * {@code request.getSession(true)}.
  */
 public class ShiroSessionFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(ShiroSessionFilter.class);
 
-    /** HTTP session key where the authenticated principal is stored */
+    /** HTTP session key where the authenticated principal collection is stored. */
     private static final String SESSION_KEY = "SHIRO_PRINCIPALS";
 
-    /** Paths that require NO authentication (exact match) */
+    /** Paths that require NO authentication. */
     private static final Set<String> ANON_PATHS = Set.of(
             "/api/v1/hello",
             "/api/v1/auth/login",
@@ -68,16 +73,12 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
 
-        //  1: Bind SecurityManager to thread
-        ThreadContext.bind(securityManager);
-
-        //  Step 2: Ensure HTTP session exists BEFORE the response is committed.
-        //    Creating a session later (in the finally block) would fail with
-        //    "Cannot create a session after the response has been committed"
-        //    because the JSESSIONID cookie can only be set while headers are open.
+        // Step 1: Create / retrieve the HTTP session BEFORE the response is committed.
+        //   Creating it later (in finally) would fail with
+        //   "Cannot create a session after the response has been committed".
         HttpSession session = request.getSession(true);
 
-        //  Step 3: Restore Subject from HTTP session
+        // Step 2: Restore Subject from HTTP session.
         PrincipalCollection pc = (PrincipalCollection) session.getAttribute(SESSION_KEY);
 
         Subject subject = new Subject.Builder(securityManager)
@@ -85,25 +86,32 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
                 .authenticated(pc != null)
                 .buildSubject();
 
-        ThreadContext.bind(subject);
-
+        /*
+         * CRITICAL FIX — ThreadContext leak prevention:
+         * Both bind() calls are INSIDE the try block.
+         * The finally block's ThreadContext.remove() is therefore always
+         * paired with these binds, even if an exception is thrown before
+         * chain.doFilter() is reached.
+         */
         try {
-            // getServletPath() may be empty in MockMvc — fall back to requestURI
+            ThreadContext.bind(securityManager);
+            ThreadContext.bind(subject);
+
+            // Step 3: Resolve path (MockMvc may return empty servletPath).
             String path = request.getServletPath();
             if (path == null || path.isEmpty()) {
                 path = request.getRequestURI();
             }
 
-            // Step 4: Apply access rules
+            // Step 4: Apply access rules.
             if (!isAnon(path)) {
-
                 if (!subject.isAuthenticated()) {
                     log.warn("Unauthenticated access blocked: {} {}", request.getMethod(), path);
                     sendJson(response, 401, "Not authenticated — POST /api/v1/auth/login first");
                     return;
                 }
 
-                if (isAdminPath(path) && !subject.hasRole("ADMIN")) {
+                if (isAdminPath(path) && !subject.hasRole(RoleName.ADMIN.name())) {
                     log.warn("Unauthorized access blocked: user='{}' path={}",
                             subject.getPrincipal(), path);
                     sendJson(response, 403, "Access denied — ADMIN role required");
@@ -111,25 +119,55 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
                 }
             }
 
-            // Step 5: Continue the request
+            // Step 5: Continue the request.
             chain.doFilter(request, response);
 
         } finally {
-            //  Step 6: Persist & clear auth state in HTTP session
-            //    Session already exists (created in Step 2), so this is safe
-            //    even after the response has been committed.
-            Subject current = ThreadContext.getSubject();
-            if (current != null && current.isAuthenticated()) {
-                session.setAttribute(SESSION_KEY, current.getPrincipals());
-            } else {
-                session.removeAttribute(SESSION_KEY);
-            }
-
-            // Step 7: Always clean up ThreadContext
+            // Step 6: Persist / rotate session, then clean up ThreadContext.
+            persistSession(request, session, pc, ThreadContext.getSubject());
             ThreadContext.remove();
         }
     }
 
+    /**
+     * Persists the post-request authentication state to the HTTP session.
+     *
+     * <p>If the subject transitioned from unauthenticated → authenticated (a login event),
+     * the old session is invalidated and a fresh session is created — preventing session
+     * fixation attacks where an attacker pre-planted a known session ID.</p>
+     */
+    private void persistSession(HttpServletRequest request,
+                                HttpSession originalSession,
+                                PrincipalCollection originalPc,
+                                Subject current) {
+        boolean wasAuthenticated = originalPc != null;
+        boolean isNowAuthenticated = current != null && current.isAuthenticated();
+
+        if (isNowAuthenticated) {
+            if (!wasAuthenticated) {
+                // LOGIN event detected — rotate session ID (session fixation prevention).
+                PrincipalCollection principals = current.getPrincipals();
+                try {
+                    originalSession.invalidate();
+                } catch (IllegalStateException ignored) {
+                    // Already invalidated — safe to continue.
+                }
+                HttpSession newSession = request.getSession(true);
+                newSession.setAttribute(SESSION_KEY, principals);
+                log.debug("Session rotated on login — fixation prevention active");
+            } else {
+                // Already authenticated — just refresh the stored principals.
+                originalSession.setAttribute(SESSION_KEY, current.getPrincipals());
+            }
+        } else {
+            // Logged out or never authenticated — clear session attribute.
+            try {
+                originalSession.removeAttribute(SESSION_KEY);
+            } catch (IllegalStateException ignored) {
+                // Session was invalidated (e.g. by logout) — nothing to clear.
+            }
+        }
+    }
 
     private boolean isAnon(String path) {
         return ANON_PATHS.contains(path)
@@ -142,9 +180,6 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
         return path.startsWith("/api/v1/admin");
     }
 
-    /**
-     * Writes a JSON error body using Jackson — safe for all characters in {@code message}.
-     */
     private void sendJson(HttpServletResponse response, int status, String message)
             throws IOException {
         response.setStatus(status);

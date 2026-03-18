@@ -21,8 +21,8 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("App Sec Shiro API")
-                        .description("Spring Boot 3 + Apache Shiro 2.1 security demo  "
-                                + "session-based auth with salted SHA-256 password hashing")
+                        .description("Spring Boot 3 + Apache Shiro 2.1 security demo — "
+                                + "session-based auth with salted SHA-512 (50 000 iterations) password hashing")
                         .version("1.0.0")
                         .license(new License()
                                 .name("Apache 2.0")

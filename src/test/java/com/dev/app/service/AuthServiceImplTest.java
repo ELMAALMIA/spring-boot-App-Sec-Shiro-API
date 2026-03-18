@@ -8,7 +8,6 @@ import com.dev.app.exception.AccountLockedException;
 import com.dev.app.exception.AuthenticationFailedException;
 import com.dev.app.repository.UserRepository;
 import com.dev.app.service.impl.AuthServiceImpl;
-import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.IncorrectCredentialsException;
 import org.apache.shiro.authc.UnknownAccountException;
 import org.apache.shiro.authc.UsernamePasswordToken;
@@ -24,6 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -36,7 +36,6 @@ class AuthServiceImplTest {
 
     private AuthServiceImpl authService;
     private Subject mockSubject;
-    private DefaultSecurityManager mockSecurityManager;
     private UserRepository mockUserRepository;
 
     @BeforeEach
@@ -45,13 +44,12 @@ class AuthServiceImplTest {
         authService = new AuthServiceImpl(mockUserRepository);
 
         mockSubject = mock(Subject.class);
-        mockSecurityManager = mock(DefaultSecurityManager.class);
+        DefaultSecurityManager mockSecurityManager = mock(DefaultSecurityManager.class);
 
-        // Bind to ThreadContext so SecurityUtils.getSubject() works
         ThreadContext.bind(mockSecurityManager);
         ThreadContext.bind(mockSubject);
 
-        // Default: user not found in DB (no lockout pre-check side effects)
+        // Default: user not found in DB (no lockout side effects)
         when(mockUserRepository.findByUsername(any())).thenReturn(Optional.empty());
     }
 
@@ -60,7 +58,7 @@ class AuthServiceImplTest {
         ThreadContext.remove();
     }
 
-    // ── login() tests ─────────────────────────────────────────────────────
+    // ── login() ──────────────────────────────────────────────────────────
 
     @Test
     void login_success_returnsLoginResponse() {
@@ -69,8 +67,7 @@ class AuthServiceImplTest {
         when(mockSubject.hasRole("ADMIN")).thenReturn(true);
         when(mockSubject.hasRole("USER")).thenReturn(true);
 
-        LoginRequest request = new LoginRequest("admin", "admin123");
-        LoginResponse response = authService.login(request);
+        LoginResponse response = authService.login(new LoginRequest("admin", "admin123"));
 
         assertEquals("Login successful", response.message());
         assertEquals("admin", response.username());
@@ -86,8 +83,7 @@ class AuthServiceImplTest {
         when(mockSubject.hasRole("ADMIN")).thenReturn(true);
         when(mockSubject.hasRole("USER")).thenReturn(false);
 
-        LoginRequest request = new LoginRequest("admin", "admin123");
-        LoginResponse response = authService.login(request);
+        LoginResponse response = authService.login(new LoginRequest("admin", "admin123"));
 
         assertEquals("Already logged in", response.message());
         verify(mockSubject, never()).login(any());
@@ -96,13 +92,11 @@ class AuthServiceImplTest {
     @Test
     void login_unknownUser_throwsAuthenticationFailed() {
         when(mockSubject.isAuthenticated()).thenReturn(false);
-        doThrow(new UnknownAccountException("test")).when(mockSubject).login(any());
-
-        LoginRequest request = new LoginRequest("unknown", "pass");
+        doThrow(new UnknownAccountException()).when(mockSubject).login(any());
 
         AuthenticationFailedException ex = assertThrows(
                 AuthenticationFailedException.class,
-                () -> authService.login(request)
+                () -> authService.login(new LoginRequest("unknown", "pass"))
         );
         assertEquals("Invalid credentials", ex.getMessage());
     }
@@ -110,15 +104,20 @@ class AuthServiceImplTest {
     @Test
     void login_wrongPassword_throwsAuthenticationFailed() {
         when(mockSubject.isAuthenticated()).thenReturn(false);
-        doThrow(new IncorrectCredentialsException("test")).when(mockSubject).login(any());
-
-        LoginRequest request = new LoginRequest("admin", "wrong");
+        doThrow(new IncorrectCredentialsException()).when(mockSubject).login(any());
 
         AuthenticationFailedException ex = assertThrows(
                 AuthenticationFailedException.class,
-                () -> authService.login(request)
+                () -> authService.login(new LoginRequest("admin", "wrong"))
         );
         assertEquals("Invalid credentials", ex.getMessage());
+
+        // Atomic increment must be called on wrong password
+        verify(mockUserRepository).recordFailedAttempt(
+                eq("admin"),
+                eq(AuthServiceImpl.MAX_FAILED_ATTEMPTS),
+                any(LocalDateTime.class)
+        );
     }
 
     @Test
@@ -130,31 +129,30 @@ class AuthServiceImplTest {
         when(mockUserRepository.findByUsername("ayoub")).thenReturn(Optional.of(lockedUser));
         when(mockSubject.isAuthenticated()).thenReturn(false);
 
-        LoginRequest request = new LoginRequest("ayoub", "ayoub123");
+        assertThrows(AccountLockedException.class,
+                () -> authService.login(new LoginRequest("ayoub", "ayoub123")));
 
-        assertThrows(AccountLockedException.class, () -> authService.login(request));
+        // Subject.login must not be called for locked accounts
         verify(mockSubject, never()).login(any());
     }
 
     @Test
-    void login_failedAttemptsReachMax_locksAccount() {
+    void login_success_resetsFailedAttempts() {
         User user = new User();
-        user.setUsername("ayoub");
-        user.setFailedAttempts(AuthServiceImpl.MAX_FAILED_ATTEMPTS - 1);
+        user.setUsername("admin");
+        user.setFailedAttempts(3);
 
-        when(mockUserRepository.findByUsername("ayoub")).thenReturn(Optional.of(user));
-        when(mockSubject.isAuthenticated()).thenReturn(false);
-        doThrow(new IncorrectCredentialsException()).when(mockSubject).login(any());
+        when(mockUserRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        when(mockSubject.isAuthenticated()).thenReturn(false).thenReturn(true);
+        when(mockSubject.getPrincipal()).thenReturn("admin");
+        when(mockSubject.hasRole(any())).thenReturn(false);
 
-        assertThrows(AuthenticationFailedException.class,
-                () -> authService.login(new LoginRequest("ayoub", "wrong")));
+        authService.login(new LoginRequest("admin", "admin123"));
 
-        assertNotNull(user.getLockedUntil());
-        assertTrue(user.getLockedUntil().isAfter(LocalDateTime.now()));
-        verify(mockUserRepository).save(user);
+        verify(mockUserRepository).resetLoginAttempts("admin");
     }
 
-    // ── logout() tests ────────────────────────────────────────────────────
+    // ── logout() ──────────────────────────────────────────────────────────
 
     @Test
     void logout_callsSubjectLogout() {
@@ -166,7 +164,7 @@ class AuthServiceImplTest {
         verify(mockSubject).logout();
     }
 
-    // ── getCurrentUser() tests ────────────────────────────────────────────
+    // ── getCurrentUser() ──────────────────────────────────────────────────
 
     @Test
     void getCurrentUser_authenticated_returnsUserInfo() {
@@ -188,13 +186,10 @@ class AuthServiceImplTest {
     void getCurrentUser_notAuthenticated_throwsException() {
         when(mockSubject.isAuthenticated()).thenReturn(false);
 
-        assertThrows(
-                AuthenticationFailedException.class,
-                () -> authService.getCurrentUser()
-        );
+        assertThrows(AuthenticationFailedException.class, () -> authService.getCurrentUser());
     }
 
-    // ── isAuthenticated() tests ───────────────────────────────────────────
+    // ── isAuthenticated() ─────────────────────────────────────────────────
 
     @Test
     void isAuthenticated_returnsSubjectState() {

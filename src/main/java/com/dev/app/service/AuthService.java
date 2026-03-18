@@ -6,6 +6,9 @@ import com.dev.app.dto.response.UserInfoResponse;
 
 /**
  * Authentication & authorization service contract.
+ *
+ * <p>All implementations must be injectable via this interface — controllers
+ * must never depend on a concrete implementation class directly.</p>
  */
 public interface AuthService {
 
@@ -33,4 +36,13 @@ public interface AuthService {
      * Check if the current thread's Subject is authenticated.
      */
     boolean isAuthenticated();
+
+    /**
+     * Unlock a locked account and reset its failed-attempt counter.
+     * Intended for admin use only.
+     *
+     * @param username the account to unlock
+     * @throws IllegalArgumentException if the user does not exist
+     */
+    void unlockAccount(String username);
 }

@@ -3,6 +3,7 @@ package com.dev.app.config;
 import com.dev.app.annotation.IsAdmin;
 import com.dev.app.annotation.IsUser;
 import com.dev.app.annotation.PermissionCheck;
+import com.dev.app.enums.RoleName;
 import com.dev.app.exception.AuthenticationFailedException;
 import com.dev.app.exception.UnauthorizedAccessException;
 import org.apache.shiro.SecurityUtils;
@@ -12,6 +13,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,16 +21,24 @@ import org.springframework.stereotype.Component;
  *
  * <p>Handles three annotations via {@link Around} advice:</p>
  * <ul>
- *   <li>{@link IsAdmin}       — requires ADMIN role</li>
- *   <li>{@link IsUser}        — requires USER role</li>
- *   <li>{@link PermissionCheck} — requires a specific Shiro permission string</li>
+ *   <li>{@link IsAdmin}        — requires {@link RoleName#ADMIN} role</li>
+ *   <li>{@link IsUser}         — requires {@link RoleName#USER} role</li>
+ *   <li>{@link PermissionCheck} — requires a specific Shiro wildcard permission</li>
  * </ul>
  *
- * <p>All checks verify authentication first, then role/permission.
- * Relies on Shiro's Subject being bound to ThreadContext by {@link ShiroSessionFilter}.</p>
+ * <p>Role names come exclusively from {@link RoleName#name()} — no raw string literals,
+ * so a typo in role names is caught at compile time.</p>
+ *
+ * <p>{@code @Order(1)} ensures this aspect runs first (highest precedence) before any
+ * other aspects on the same join point, guaranteeing security checks gate all business
+ * logic regardless of future aspect additions.</p>
+ *
+ * <p>Relies on Shiro's Subject being bound to ThreadContext by {@link ShiroSessionFilter}
+ * before the request reaches the controller layer.</p>
  */
 @Aspect
 @Component
+@Order(1)
 public class SecurityAspect {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityAspect.class);
@@ -40,22 +50,24 @@ public class SecurityAspect {
     @Around("@annotation(isAdmin)")
     public Object checkAdminRole(ProceedingJoinPoint pjp, IsAdmin isAdmin) throws Throwable {
         Subject subject = requireAuthenticated();
-        if (!subject.hasRole("ADMIN")) {
-            log.warn("@IsAdmin check failed — user='{}' lacks ADMIN role", subject.getPrincipal());
+        if (!subject.hasRole(RoleName.ADMIN.name())) {
+            log.warn("@IsAdmin check failed — user='{}' lacks {} role",
+                    subject.getPrincipal(), RoleName.ADMIN);
             throw new UnauthorizedAccessException("Access denied — ADMIN role required");
         }
         return pjp.proceed();
     }
 
-
+    // -----------------------------------------------------------------------
     // @IsUser
-
+    // -----------------------------------------------------------------------
 
     @Around("@annotation(isUser)")
     public Object checkUserRole(ProceedingJoinPoint pjp, IsUser isUser) throws Throwable {
         Subject subject = requireAuthenticated();
-        if (!subject.hasRole("USER")) {
-            log.warn("@IsUser check failed — user='{}' lacks USER role", subject.getPrincipal());
+        if (!subject.hasRole(RoleName.USER.name())) {
+            log.warn("@IsUser check failed — user='{}' lacks {} role",
+                    subject.getPrincipal(), RoleName.USER);
             throw new UnauthorizedAccessException("Access denied — USER role required");
         }
         return pjp.proceed();
@@ -77,6 +89,9 @@ public class SecurityAspect {
         return pjp.proceed();
     }
 
+    // -----------------------------------------------------------------------
+    // Shared helper
+    // -----------------------------------------------------------------------
 
     private Subject requireAuthenticated() {
         Subject subject = SecurityUtils.getSubject();

@@ -10,6 +10,7 @@ import org.apache.shiro.authc.credential.DefaultPasswordService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,7 @@ import java.util.Set;
  * safe against rainbow-table and brute-force attacks.</p>
  */
 @Component
+@ConditionalOnProperty(name = "app.seed-test-users", havingValue = "true")
 public class DataLoader implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataLoader.class);
