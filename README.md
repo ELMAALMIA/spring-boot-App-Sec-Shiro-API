@@ -29,49 +29,7 @@ A demonstration of integrating **Apache Shiro 2.1.0** with **Spring Boot 3.x (Ja
 
 ## Architecture
 
-```
-com.dev.app/
-├── config/
-│   ├── ShiroConfig.java          ← SecurityManager + PasswordService + Realm
-│   ├── ShiroWebConfig.java       ← Filter registration + AOP for annotations
-│   ├── ShiroSessionFilter.java   ← Custom Jakarta filter (replaces shiro-web)
-│   ├── DatabaseRealm.java        ← Bridges Shiro with JPA/database
-│   └── OpenApiConfig.java        ← Swagger configuration
-│
-├── controller/
-│   ├── AuthController.java       ← POST /api/v1/auth/login, /logout, GET /me
-│   ├── AdminController.java      ← GET /api/v1/admin/dashboard (ADMIN only)
-│   └── HelloController.java      ← GET /api/v1/hello (public)
-│
-├── service/
-│   ├── AuthService.java          ← Interface
-│   └── impl/AuthServiceImpl.java ← Shiro Subject logic
-│
-├── dto/
-│   ├── request/LoginRequest.java ← @Valid input with @NotBlank + @Size
-│   └── response/
-│       ├── LoginResponse.java
-│       ├── UserInfoResponse.java
-│       └── MessageResponse.java
-│
-├── exception/
-│   ├── GlobalExceptionHandler.java        ← @RestControllerAdvice
-│   ├── AuthenticationFailedException.java
-│   ├── UnauthorizedAccessException.java
-│   └── ResourceNotFoundException.java
-│
-├── entities/
-│   ├── User.java                 ← JPA entity (@ManyToMany → roles)
-│   └── Role.java                 ← JPA entity with RoleName enum
-│
-├── enums/
-│   └── RoleName.java             ← ADMIN, USER
-│
-├── repository/
-│   └── UserRepository.java
-│
-└── DataLoader.java               ← Seeds test users on startup
-```
+![Sequence Diagram — Login & Access Protected Resource](docs/sequence-diagram.png)
 
 ## Key Design Decision: No `shiro-web`
 
@@ -122,9 +80,9 @@ The app starts on **http://localhost:8080** (or the port configured in `applicat
 ### Seeded Users
 
 | Username | Password | Roles |
-|---|---|---|
-| `admin` | `admin123` | ADMIN, USER |
-| `alice` | `ayoub123` | USER |
+|----------|---|---|
+| `admin`  | `admin123` | ADMIN, USER |
+| `ayoub`    | `ayoub123` | USER |
 
 ### Useful URLs
 
@@ -211,7 +169,6 @@ mvn test
 | `AuthServiceImplTest` | 8 | Unit — mocked Shiro Subject |
 | `ShiroSessionFilterTest` | 7 | Unit — real SecurityManager, mock servlet |
 | `AuthIntegrationTest` | 10 | Integration — full Spring context + MockMvc |
-| `ApplicationTests` | 1 | Context load |
 
 **Unit tests** verify:
 - Login success, already-authenticated, unknown user, wrong password
