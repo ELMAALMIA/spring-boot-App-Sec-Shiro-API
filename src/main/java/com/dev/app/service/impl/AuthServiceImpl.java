@@ -12,6 +12,7 @@ import com.dev.app.repository.UserRepository;
 import com.dev.app.service.AuthService;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.apache.shiro.subject.Subject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,13 +50,21 @@ public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
-    public static final int MAX_FAILED_ATTEMPTS   = 5;
-    static final         int LOCK_DURATION_MINUTES = 15;
+    /** Default values — match app.security.* in application.properties. */
+    public static final int MAX_FAILED_ATTEMPTS    = 5;
+    public static final int LOCK_DURATION_MINUTES  = 15;
 
     private final UserRepository userRepository;
+    private final int maxFailedAttempts;
+    private final int lockDurationMinutes;
 
-    public AuthServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public AuthServiceImpl(
+            UserRepository userRepository,
+            @Value("${app.security.max-failed-attempts:5}")  int maxFailedAttempts,
+            @Value("${app.security.lock-duration-minutes:15}") int lockDurationMinutes) {
+        this.userRepository       = userRepository;
+        this.maxFailedAttempts    = maxFailedAttempts;
+        this.lockDurationMinutes  = lockDurationMinutes;
     }
 
     @Override
@@ -98,8 +107,8 @@ public class AuthServiceImpl implements AuthService {
             // Atomic increment + conditional lock in one SQL statement.
             userRepository.recordFailedAttempt(
                     request.username(),
-                    MAX_FAILED_ATTEMPTS,
-                    LocalDateTime.now().plusMinutes(LOCK_DURATION_MINUTES)
+                    maxFailedAttempts,
+                    LocalDateTime.now().plusMinutes(lockDurationMinutes)
             );
             log.warn("Login failed — wrong password: username={}", request.username());
             throw new AuthenticationFailedException("Invalid credentials", e);

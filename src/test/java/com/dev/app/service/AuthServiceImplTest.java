@@ -41,7 +41,10 @@ class AuthServiceImplTest {
     @BeforeEach
     void setUp() {
         mockUserRepository = mock(UserRepository.class);
-        authService = new AuthServiceImpl(mockUserRepository);
+        authService = new AuthServiceImpl(
+                mockUserRepository,
+                AuthServiceImpl.MAX_FAILED_ATTEMPTS,
+                AuthServiceImpl.LOCK_DURATION_MINUTES);
 
         mockSubject = mock(Subject.class);
         DefaultSecurityManager mockSecurityManager = mock(DefaultSecurityManager.class);
