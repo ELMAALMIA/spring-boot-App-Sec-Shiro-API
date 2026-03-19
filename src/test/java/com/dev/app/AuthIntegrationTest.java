@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -24,9 +25,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Uses {@code @SpringBootTest} with {@code MockMvc} to test real HTTP
  * requests through the entire filter chain, including ShiroSessionFilter,
  * controllers, services, and database.
+ *
+ * <p>Activates the {@code dev} profile so that test users are seeded,
+ * Swagger is enabled, and non-HTTPS cookies are permitted.</p>
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("dev")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AuthIntegrationTest {
 
