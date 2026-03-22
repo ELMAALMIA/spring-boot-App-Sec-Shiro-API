@@ -57,6 +57,7 @@ public class AuthController {
      */
     @GetMapping("/me")
     @IsUser
+    @RateLimit(requests = 30, windowSeconds = 60)
     public ResponseEntity<UserInfoResponse> me(@CurrentUser String username) {
         return ResponseEntity.ok(authService.getCurrentUser());
     }

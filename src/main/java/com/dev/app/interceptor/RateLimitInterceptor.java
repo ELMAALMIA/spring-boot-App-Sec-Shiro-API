@@ -59,7 +59,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         /*
          * The exceeded flag is set INSIDE compute(), which ConcurrentHashMap guarantees
          * runs atomically per key. No other thread can interleave between the increment
-         * and the threshold check — eliminating the TOCTOU race condition.
+         * and the threshold check ; eliminating the TOCTOU race condition.
          */
         boolean[] exceeded = {false};
 

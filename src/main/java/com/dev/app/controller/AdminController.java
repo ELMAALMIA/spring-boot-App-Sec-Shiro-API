@@ -3,6 +3,7 @@ package com.dev.app.controller;
 import com.dev.app.annotation.CurrentUser;
 import com.dev.app.annotation.IsAdmin;
 import com.dev.app.annotation.PermissionCheck;
+import com.dev.app.annotation.RateLimit;
 import com.dev.app.dto.response.MessageResponse;
 import com.dev.app.dto.response.UserInfoResponse;
 import com.dev.app.service.AuthService;
@@ -45,6 +46,7 @@ public class AdminController {
      */
     @GetMapping("/dashboard")
     @IsAdmin
+    @RateLimit(requests = 30, windowSeconds = 60)
     public ResponseEntity<Map<String, Object>> dashboard(@CurrentUser String username) {
         UserInfoResponse user = authService.getCurrentUser();
         return ResponseEntity.ok(Map.of(
@@ -63,6 +65,7 @@ public class AdminController {
     @PostMapping("/users/{username}/unlock")
     @IsAdmin
     @PermissionCheck("admin:manage")
+    @RateLimit(requests = 10, windowSeconds = 60)
     public ResponseEntity<MessageResponse> unlockUser(
             @PathVariable
             @NotBlank(message = "Username must not be blank")
