@@ -4,6 +4,7 @@ import com.dev.app.repository.UserRepository;
 import com.dev.app.security.realm.DatabaseRealm;
 import org.apache.shiro.authc.credential.DefaultPasswordService;
 import org.apache.shiro.authc.credential.PasswordMatcher;
+import org.apache.shiro.cache.MemoryConstrainedCacheManager;
 import org.apache.shiro.mgt.DefaultSecurityManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,12 +26,20 @@ import org.springframework.context.annotation.Configuration;
  * {@link DatabaseRealm} is instantiated here and receives {@link UserRepository}
  * via its constructor — no {@code @Autowired} field injection on the realm.
  *
+ * <h3>Authorization cache</h3>
+ * {@link MemoryConstrainedCacheManager} is wired into the
+ * {@link DefaultSecurityManager} so that Shiro caches each user's roles
+ * and permissions after the first {@code doGetAuthorizationInfo()} call.
+ * Without a cache, every {@code subject.hasRole()} / {@code isPermitted()}
+ * triggers a fresh database query — one per AOP annotation per request.
+ *
  * <p>Beans:</p>
  * <ol>
- *   <li>{@link DefaultPasswordService}  — hashes and verifies passwords</li>
- *   <li>{@link PasswordMatcher}         — credential comparator for the Realm</li>
- *   <li>{@link DatabaseRealm}           — loads users + roles from the database</li>
- *   <li>{@link DefaultSecurityManager}  — Shiro's central security coordinator</li>
+ *   <li>{@link DefaultPasswordService}       — hashes and verifies passwords</li>
+ *   <li>{@link PasswordMatcher}              — credential comparator for the Realm</li>
+ *   <li>{@link DatabaseRealm}               — loads users + roles from the database</li>
+ *   <li>{@link MemoryConstrainedCacheManager}— in-process auth cache (bounded memory)</li>
+ *   <li>{@link DefaultSecurityManager}       — Shiro's central security coordinator</li>
  * </ol>
  */
 @Configuration
@@ -60,8 +69,24 @@ public class ShiroConfig {
         return realm;
     }
 
+    /**
+     * Bounded in-memory cache for Shiro authorization data.
+     *
+     * <p>Caches the result of {@code doGetAuthorizationInfo()} per principal,
+     * eliminating repeated DB queries on every role/permission check.
+     * For clustered deployments replace with an EhCache or Redis-backed
+     * {@code CacheManager}.</p>
+     */
     @Bean
-    public DefaultSecurityManager securityManager(DatabaseRealm databaseRealm) {
-        return new DefaultSecurityManager(databaseRealm);
+    public MemoryConstrainedCacheManager shiroCacheManager() {
+        return new MemoryConstrainedCacheManager();
+    }
+
+    @Bean
+    public DefaultSecurityManager securityManager(DatabaseRealm databaseRealm,
+                                                   MemoryConstrainedCacheManager cacheManager) {
+        DefaultSecurityManager sm = new DefaultSecurityManager(databaseRealm);
+        sm.setCacheManager(cacheManager);
+        return sm;
     }
 }
