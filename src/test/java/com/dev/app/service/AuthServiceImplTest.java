@@ -7,6 +7,7 @@ import com.dev.app.entities.User;
 import com.dev.app.exception.AccountLockedException;
 import com.dev.app.exception.AuthenticationFailedException;
 import com.dev.app.repository.UserRepository;
+import com.dev.app.service.AuditService;
 import com.dev.app.service.impl.AuthServiceImpl;
 import org.apache.shiro.authc.IncorrectCredentialsException;
 import org.apache.shiro.authc.UnknownAccountException;
@@ -37,12 +38,15 @@ class AuthServiceImplTest {
     private AuthServiceImpl authService;
     private Subject mockSubject;
     private UserRepository mockUserRepository;
+    private AuditService mockAuditService;
 
     @BeforeEach
     void setUp() {
         mockUserRepository = mock(UserRepository.class);
+        mockAuditService   = mock(AuditService.class);
         authService = new AuthServiceImpl(
                 mockUserRepository,
+                mockAuditService,
                 AuthServiceImpl.MAX_FAILED_ATTEMPTS,
                 AuthServiceImpl.LOCK_DURATION_MINUTES);
 
