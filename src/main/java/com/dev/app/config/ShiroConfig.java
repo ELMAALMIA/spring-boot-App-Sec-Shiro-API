@@ -63,8 +63,9 @@ public class ShiroConfig {
      */
     @Bean
     public DatabaseRealm databaseRealm(PasswordMatcher credentialsMatcher,
+                                        DefaultPasswordService passwordService,
                                         UserRepository userRepository) {
-        DatabaseRealm realm = new DatabaseRealm(userRepository);
+        DatabaseRealm realm = new DatabaseRealm(userRepository, passwordService);
         realm.setCredentialsMatcher(credentialsMatcher);
         return realm;
     }
