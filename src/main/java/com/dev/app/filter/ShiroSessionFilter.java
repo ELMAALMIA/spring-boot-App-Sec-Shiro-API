@@ -53,11 +53,29 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
     /** HTTP session key where the authenticated principal collection is stored. */
     private static final String SESSION_KEY = "SHIRO_PRINCIPALS";
 
-    /** Paths that require NO authentication. */
-    private static final Set<String> ANON_PATHS = Set.of(
+    /** Exact paths that require NO authentication. */
+    private static final Set<String> ANON_EXACT = Set.of(
             "/api/v1/hello",
             "/api/v1/auth/login",
             "/api/v1/auth/logout"
+    );
+
+    /**
+     * Path prefixes that require NO authentication.
+     *
+     * <p>Swagger and OpenAPI docs are listed here for developer convenience
+     * in the dev profile. In production these endpoints are disabled entirely
+     * via {@code springdoc.swagger-ui.enabled=false} and
+     * {@code springdoc.api-docs.enabled=false}, so these prefixes never match
+     * any active route — they are NOT a security bypass.</p>
+     *
+     * <p>H2 console is intentionally excluded: it is disabled by default
+     * ({@code spring.h2.console.enabled=false}) and must never be reachable
+     * without authentication even when accidentally re-enabled.</p>
+     */
+    private static final Set<String> ANON_PREFIXES = Set.of(
+            "/swagger-ui",
+            "/v3/api-docs"
     );
 
     private final SecurityManager securityManager;
@@ -170,10 +188,8 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
     }
 
     private boolean isAnon(String path) {
-        return ANON_PATHS.contains(path)
-                || path.startsWith("/h2-console")
-                || path.startsWith("/swagger-ui")
-                || path.startsWith("/v3/api-docs");
+        return ANON_EXACT.contains(path)
+                || ANON_PREFIXES.stream().anyMatch(path::startsWith);
     }
 
     private boolean isAdminPath(String path) {
