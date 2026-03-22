@@ -59,10 +59,10 @@ public class DataLoader implements CommandLineRunner {
         Role userRole  = createRole(RoleName.USER);
 
         // Create users
-        createUser("admin", "admin123", Set.of(adminRole, userRole));
-        createUser("ayoub", "ayoub123", Set.of(userRole));
+        createUser("admin", "Admin123!", Set.of(adminRole, userRole));
+        createUser("ayoub", "Ayoub123!", Set.of(userRole));
 
-        log.info("Test users seeded: admin/admin123 (ADMIN,USER) — ayoub/ayoub123 (USER)");
+        log.info("Test users seeded: admin/Admin123! (ADMIN,USER) — ayoub/Ayoub123! (USER)");
     }
 
     private Role createRole(RoleName name) {

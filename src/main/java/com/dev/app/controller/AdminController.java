@@ -6,7 +6,11 @@ import com.dev.app.annotation.PermissionCheck;
 import com.dev.app.dto.response.MessageResponse;
 import com.dev.app.dto.response.UserInfoResponse;
 import com.dev.app.service.AuthService;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -27,6 +31,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/v1/admin")
+@Validated
 public class AdminController {
 
     private final AuthService authService;
@@ -58,8 +63,13 @@ public class AdminController {
     @PostMapping("/users/{username}/unlock")
     @IsAdmin
     @PermissionCheck("admin:manage")
-    public ResponseEntity<MessageResponse> unlockUser(@PathVariable String username,
-                                                       @CurrentUser String adminUsername) {
+    public ResponseEntity<MessageResponse> unlockUser(
+            @PathVariable
+            @NotBlank(message = "Username must not be blank")
+            @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+            @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Username contains invalid characters")
+            String username,
+            @CurrentUser String adminUsername) {
         authService.unlockAccount(username);
         return ResponseEntity.ok(
                 new MessageResponse("Account '" + username + "' unlocked by " + adminUsername)

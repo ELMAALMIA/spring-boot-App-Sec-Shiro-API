@@ -99,7 +99,8 @@ class AuthIntegrationTest {
     @Test
     @Order(21)
     void login_wrongPassword_returns401() throws Exception {
-        LoginRequest request = new LoginRequest("admin", "wrongpassword");
+        // Password meets complexity rules but is wrong for the account
+        LoginRequest request = new LoginRequest("admin", "Wr0ng!pass");
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -110,7 +111,8 @@ class AuthIntegrationTest {
     @Test
     @Order(22)
     void login_unknownUser_returns401() throws Exception {
-        LoginRequest request = new LoginRequest("nonexistent", "password");
+        // Password meets complexity rules but account does not exist
+        LoginRequest request = new LoginRequest("nonexistent", "Unkn0wn!pass");
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -124,7 +126,7 @@ class AuthIntegrationTest {
     @Order(30)
     void fullFlow_adminUser() throws Exception {
         // 1. Login as admin
-        LoginRequest loginRequest = new LoginRequest("admin", "admin123");
+        LoginRequest loginRequest = new LoginRequest("admin", "Admin123!");
         MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -165,8 +167,8 @@ class AuthIntegrationTest {
     @Test
     @Order(31)
     void fullFlow_regularUser_noAdminAccess() throws Exception {
-        // 1. Login as alice
-        LoginRequest loginRequest = new LoginRequest("ayoub", "ayoub123");
+        // 1. Login as ayoub
+        LoginRequest loginRequest = new LoginRequest("ayoub", "Ayoub123!");
         MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
