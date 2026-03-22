@@ -1,5 +1,6 @@
 package com.dev.app.config;
 
+import com.dev.app.filter.SecurityHeadersFilter;
 import com.dev.app.filter.ShiroSessionFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.shiro.mgt.DefaultSecurityManager;
@@ -23,6 +24,17 @@ import org.springframework.context.annotation.DependsOn;
  */
 @Configuration
 public class ShiroWebConfig {
+
+    //  Security response headers (runs first — lowest order)
+    @Bean
+    public FilterRegistrationBean<SecurityHeadersFilter> securityHeadersFilterRegistration() {
+        FilterRegistrationBean<SecurityHeadersFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new SecurityHeadersFilter());
+        registration.addUrlPatterns("/*");
+        registration.setName("securityHeadersFilter");
+        registration.setOrder(0);
+        return registration;
+    }
 
     //  Custom Jakarta-compatible Shiro filter
     @Bean
