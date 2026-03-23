@@ -1,10 +1,15 @@
 # 🔐 Apache Shiro Security App — Spring Boot 3.x
 
 <p align="center">
+  <a href="https://github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API/actions/workflows/ci.yml">
+    <img src="https://github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  &nbsp;
   <img src="https://img.shields.io/badge/Java-17-orange?style=for-the-badge&logo=openjdk" />
   <img src="https://img.shields.io/badge/Spring%20Boot-3.5.x-6DB33F?style=for-the-badge&logo=springboot" />
   <img src="https://img.shields.io/badge/Apache%20Shiro-2.1.0-blue?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Tests-27%20passing-brightgreen?style=for-the-badge&logo=junit5" />
+  <img src="https://img.shields.io/badge/docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" />
 </p>
 
@@ -690,5 +695,5 @@ Open a private discussion or email the maintainer directly.
 <p align="center">
   Made with ☕ and a healthy dose of security paranoia.
   <br/>
-  <a href="https://github.com/your-username/app-sec-shiro">⭐ Star this repo if it helped you!</a>
+  <a href="https://github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API">⭐ Star this repo if it helped you!</a>
 </p>
