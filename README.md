@@ -364,42 +364,73 @@ com.dev.app
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### Option A — Docker (recommended, zero setup)
 
-- Java 17+
-- Maven 3.8+
+> Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) — no Java or Maven needed.
 
-### Run in dev mode
+```bash
+# Clone
+git clone https://github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API.git
+cd app-sec-shiro
+
+# Build image + start container
+docker compose up --build -d
+
+```
+
+The app starts on **http://localhost:8080** with everything ready:
+
+| URL | Description |
+|---|---|
+| http://localhost:8080/api/v1/hello | Health check |
+| http://localhost:8080/swagger-ui.html | Swagger UI |
+| http://localhost:8080/h2-console | H2 database console |
+
+```bash
+docker compose down          # stop + remove container
+docker compose logs -f app   # follow live logs
+```
+
+---
+
+### Option B — Maven (requires Java 17+ and Maven 3.8+)
+
+**Dev mode**
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-The app starts on **http://localhost:8080** with:
-- ✅ Swagger UI enabled at `/swagger-ui.html`
+- ✅ Swagger UI at `/swagger-ui.html`
 - ✅ H2 console at `/h2-console`
 - ✅ Test users seeded automatically
-- ✅ SQL logging enabled
-- ✅ Verbose error messages
+- ✅ SQL logging + verbose error messages
 
-### Run in production mode
+**Production mode**
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=prod
 ```
 
-Production profile enforces:
 - 🔒 Swagger UI disabled
 - 🔒 `cookie.secure=true` (HTTPS only)
 - 🔒 `include-message=never`
-- 🔒 No test user seeding
-- 🔒 Minimal logging
+- 🔒 No test user seeding — minimal logging
 
-### Build & test
+**Build & test**
 
 ```bash
 mvn clean verify
 ```
+
+---
+
+### Seeded test users (dev profile)
+
+| Username | Password | Roles |
+|---|---|---|
+| `admin` | `Admin123!` | ADMIN, USER |
+| `ayoub` | `Ayoub123!` | USER |
 
 ---
 

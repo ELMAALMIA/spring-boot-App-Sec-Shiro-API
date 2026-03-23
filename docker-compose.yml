@@ -1,0 +1,36 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  docker-compose.yml — instant local demo
+#
+#  Usage:
+#    docker compose up --build        # build image + start
+#    docker compose up                # start (reuse cached image)
+#    docker compose down              # stop + remove containers
+#    docker compose logs -f app       # follow app logs
+#
+#  The app starts on http://localhost:8080 with:
+#    ✅ Swagger UI  → http://localhost:8080/swagger-ui.html
+#    ✅ H2 console  → http://localhost:8080/h2-console
+#    ✅ Test users seeded (admin / ayoub)
+#    ✅ Health check on /api/v1/hello
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app-sec-shiro
+    ports:
+      - "8080:8080"
+    environment:
+      # Activate dev profile: seeds users, enables Swagger + H2 console,
+      # allows non-HTTPS cookies, enables SQL logging
+      SPRING_PROFILES_ACTIVE: dev
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:8080/api/v1/hello || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped

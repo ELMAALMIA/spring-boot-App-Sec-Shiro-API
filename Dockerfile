@@ -1,12 +1,3 @@
-# ─────────────────────────────────────────────────────────────────────────────
-#  Multi-stage build
-#
-#  Stage 1 — build:   Maven + JDK 17 → produces the fat JAR
-#  Stage 2 — runtime: slim JRE 17 Alpine → runs the JAR as a non-root user
-#
-#  Layer-caching trick: copy pom.xml and resolve dependencies BEFORE copying
-#  source code, so the dependency layer is only rebuilt when pom.xml changes.
-# ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: build ────────────────────────────────────────────────────────────
 FROM maven:3.9-eclipse-temurin-17 AS build
