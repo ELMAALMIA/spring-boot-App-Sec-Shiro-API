@@ -628,6 +628,8 @@ Integration tests run under the `dev` profile (`@ActiveProfiles("dev")`) to enab
 
 Contributions are welcome! This is an open-source project — whether you're fixing a bug, improving documentation, or adding a new security feature, your help is appreciated.
 
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full guide, and [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for community standards. Notable changes are tracked in [`CHANGELOG.md`](CHANGELOG.md).
+
 ### How to contribute
 
 1. **Fork** the repository
@@ -677,7 +679,7 @@ See [📦 Package Structure](#-package-structure) above for where things live.
 ### Reporting security issues
 
 Please **do not** open a public issue for security vulnerabilities.
-Open a private discussion or email the maintainer directly.
+See [`SECURITY.md`](SECURITY.md) for the full responsible disclosure process.
 
 ---
 
