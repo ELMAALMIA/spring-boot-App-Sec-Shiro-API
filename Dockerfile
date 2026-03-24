@@ -17,6 +17,10 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
+# Upgrade all Alpine packages to pick up latest security patches before
+# switching to a non-root user (apk requires root).
+RUN apk upgrade --no-cache
+
 # Security: run as a dedicated non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
