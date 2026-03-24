@@ -50,3 +50,27 @@ jobs:
 
       - name: Build Docker image
         run: docker build --no-cache -t app-sec-shiro:ci .
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: app-sec-shiro:ci
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy scan results (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: app-sec-shiro:ci
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
