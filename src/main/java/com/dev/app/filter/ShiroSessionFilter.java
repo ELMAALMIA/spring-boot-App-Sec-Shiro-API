@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 import java.util.Map;
@@ -91,9 +92,17 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
 
+        /*
+         * Wrap the response to buffer the body, preventing premature commit.
+         * Without this wrapper, Jackson writes + commits the response body inside
+         * chain.doFilter(), and the subsequent session rotation in persistSession()
+         * would fail with "Cannot create a session after the response has been committed"
+         * because Set-Cookie headers can no longer be written.
+         * copyBodyToResponse() is called in finally, AFTER session rotation is done.
+         */
+        ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
+
         // Step 1: Create / retrieve the HTTP session BEFORE the response is committed.
-        //   Creating it later (in finally) would fail with
-        //   "Cannot create a session after the response has been committed".
         HttpSession session = request.getSession(true);
 
         // Step 2: Restore Subject from HTTP session.
@@ -137,13 +146,15 @@ public class ShiroSessionFilter extends OncePerRequestFilter {
                 }
             }
 
-            // Step 5: Continue the request.
-            chain.doFilter(request, response);
+            // Step 5: Continue the request — body buffered in wrappedResponse, not committed yet.
+            chain.doFilter(request, wrappedResponse);
 
         } finally {
-            // Step 6: Persist / rotate session, then clean up ThreadContext.
+            // Step 6: Persist / rotate session — safe because wrappedResponse has not flushed yet.
             persistSession(request, session, pc, ThreadContext.getSubject());
             ThreadContext.remove();
+            // Step 7: Flush the buffered body to the actual response NOW (after Set-Cookie is set).
+            wrappedResponse.copyBodyToResponse();
         }
     }
 

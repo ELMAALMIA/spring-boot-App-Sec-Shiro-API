@@ -14,7 +14,7 @@ on:
 
 jobs:
   test:
-    name: Build & Test (Java 17)
+    name: Build & Test
     runs-on: ubuntu-latest
 
     steps:
