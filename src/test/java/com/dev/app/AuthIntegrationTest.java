@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -24,9 +25,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Uses {@code @SpringBootTest} with {@code MockMvc} to test real HTTP
  * requests through the entire filter chain, including ShiroSessionFilter,
  * controllers, services, and database.
+ *
+ * <p>Activates the {@code dev} profile so that test users are seeded,
+ * Swagger is enabled, and non-HTTPS cookies are permitted.</p>
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("dev")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AuthIntegrationTest {
 
@@ -94,23 +99,25 @@ class AuthIntegrationTest {
     @Test
     @Order(21)
     void login_wrongPassword_returns401() throws Exception {
-        LoginRequest request = new LoginRequest("admin", "wrongpassword");
+        // Password meets complexity rules but is wrong for the account
+        LoginRequest request = new LoginRequest("admin", "Wr0ng!pass");
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Wrong password"));
+                .andExpect(jsonPath("$.message").value("Invalid credentials"));
     }
 
     @Test
     @Order(22)
     void login_unknownUser_returns401() throws Exception {
-        LoginRequest request = new LoginRequest("nonexistent", "password");
+        // Password meets complexity rules but account does not exist
+        LoginRequest request = new LoginRequest("nonexistent", "Unkn0wn!pass");
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Unknown user"));
+                .andExpect(jsonPath("$.message").value("Invalid credentials"));
     }
 
     //  Full auth flow: admin user
@@ -119,7 +126,7 @@ class AuthIntegrationTest {
     @Order(30)
     void fullFlow_adminUser() throws Exception {
         // 1. Login as admin
-        LoginRequest loginRequest = new LoginRequest("admin", "admin123");
+        LoginRequest loginRequest = new LoginRequest("admin", "Admin123!");
         MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -160,8 +167,8 @@ class AuthIntegrationTest {
     @Test
     @Order(31)
     void fullFlow_regularUser_noAdminAccess() throws Exception {
-        // 1. Login as alice
-        LoginRequest loginRequest = new LoginRequest("ayoub", "ayoub123");
+        // 1. Login as ayoub
+        LoginRequest loginRequest = new LoginRequest("ayoub", "Ayoub123!");
         MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))

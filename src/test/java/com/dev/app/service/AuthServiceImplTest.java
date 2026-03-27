@@ -3,9 +3,12 @@ package com.dev.app.service;
 import com.dev.app.dto.request.LoginRequest;
 import com.dev.app.dto.response.LoginResponse;
 import com.dev.app.dto.response.UserInfoResponse;
+import com.dev.app.entities.User;
+import com.dev.app.exception.AccountLockedException;
 import com.dev.app.exception.AuthenticationFailedException;
+import com.dev.app.repository.UserRepository;
+import com.dev.app.service.AuditService;
 import com.dev.app.service.impl.AuthServiceImpl;
-import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.IncorrectCredentialsException;
 import org.apache.shiro.authc.UnknownAccountException;
 import org.apache.shiro.authc.UsernamePasswordToken;
@@ -16,8 +19,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -30,18 +37,27 @@ class AuthServiceImplTest {
 
     private AuthServiceImpl authService;
     private Subject mockSubject;
-    private DefaultSecurityManager mockSecurityManager;
+    private UserRepository mockUserRepository;
+    private AuditService mockAuditService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl();
+        mockUserRepository = mock(UserRepository.class);
+        mockAuditService   = mock(AuditService.class);
+        authService = new AuthServiceImpl(
+                mockUserRepository,
+                mockAuditService,
+                AuthServiceImpl.MAX_FAILED_ATTEMPTS,
+                AuthServiceImpl.LOCK_DURATION_MINUTES);
 
         mockSubject = mock(Subject.class);
-        mockSecurityManager = mock(DefaultSecurityManager.class);
+        DefaultSecurityManager mockSecurityManager = mock(DefaultSecurityManager.class);
 
-        // Bind to ThreadContext so SecurityUtils.getSubject() works
         ThreadContext.bind(mockSecurityManager);
         ThreadContext.bind(mockSubject);
+
+        // Default: user not found in DB (no lockout side effects)
+        when(mockUserRepository.findByUsername(any())).thenReturn(Optional.empty());
     }
 
     @AfterEach
@@ -49,7 +65,7 @@ class AuthServiceImplTest {
         ThreadContext.remove();
     }
 
-    // ── login() tests ─────────────────────────────────────────────────────
+    // ── login() ──────────────────────────────────────────────────────────
 
     @Test
     void login_success_returnsLoginResponse() {
@@ -58,8 +74,7 @@ class AuthServiceImplTest {
         when(mockSubject.hasRole("ADMIN")).thenReturn(true);
         when(mockSubject.hasRole("USER")).thenReturn(true);
 
-        LoginRequest request = new LoginRequest("admin", "admin123");
-        LoginResponse response = authService.login(request);
+        LoginResponse response = authService.login(new LoginRequest("admin", "admin123"));
 
         assertEquals("Login successful", response.message());
         assertEquals("admin", response.username());
@@ -75,8 +90,7 @@ class AuthServiceImplTest {
         when(mockSubject.hasRole("ADMIN")).thenReturn(true);
         when(mockSubject.hasRole("USER")).thenReturn(false);
 
-        LoginRequest request = new LoginRequest("admin", "admin123");
-        LoginResponse response = authService.login(request);
+        LoginResponse response = authService.login(new LoginRequest("admin", "admin123"));
 
         assertEquals("Already logged in", response.message());
         verify(mockSubject, never()).login(any());
@@ -85,32 +99,67 @@ class AuthServiceImplTest {
     @Test
     void login_unknownUser_throwsAuthenticationFailed() {
         when(mockSubject.isAuthenticated()).thenReturn(false);
-        doThrow(new UnknownAccountException("test")).when(mockSubject).login(any());
-
-        LoginRequest request = new LoginRequest("unknown", "pass");
+        doThrow(new UnknownAccountException()).when(mockSubject).login(any());
 
         AuthenticationFailedException ex = assertThrows(
                 AuthenticationFailedException.class,
-                () -> authService.login(request)
+                () -> authService.login(new LoginRequest("unknown", "pass"))
         );
-        assertEquals("Unknown user", ex.getMessage());
+        assertEquals("Invalid credentials", ex.getMessage());
     }
 
     @Test
     void login_wrongPassword_throwsAuthenticationFailed() {
         when(mockSubject.isAuthenticated()).thenReturn(false);
-        doThrow(new IncorrectCredentialsException("test")).when(mockSubject).login(any());
-
-        LoginRequest request = new LoginRequest("admin", "wrong");
+        doThrow(new IncorrectCredentialsException()).when(mockSubject).login(any());
 
         AuthenticationFailedException ex = assertThrows(
                 AuthenticationFailedException.class,
-                () -> authService.login(request)
+                () -> authService.login(new LoginRequest("admin", "wrong"))
         );
-        assertEquals("Wrong password", ex.getMessage());
+        assertEquals("Invalid credentials", ex.getMessage());
+
+        // Atomic increment must be called on wrong password
+        verify(mockUserRepository).recordFailedAttempt(
+                eq("admin"),
+                eq(AuthServiceImpl.MAX_FAILED_ATTEMPTS),
+                any(LocalDateTime.class)
+        );
     }
 
-    // ── logout() tests ────────────────────────────────────────────────────
+    @Test
+    void login_lockedAccount_throwsAccountLockedException() {
+        User lockedUser = new User();
+        lockedUser.setUsername("ayoub");
+        lockedUser.setLockedUntil(LocalDateTime.now().plusMinutes(10));
+
+        when(mockUserRepository.findByUsername("ayoub")).thenReturn(Optional.of(lockedUser));
+        when(mockSubject.isAuthenticated()).thenReturn(false);
+
+        assertThrows(AccountLockedException.class,
+                () -> authService.login(new LoginRequest("ayoub", "ayoub123")));
+
+        // Subject.login must not be called for locked accounts
+        verify(mockSubject, never()).login(any());
+    }
+
+    @Test
+    void login_success_resetsFailedAttempts() {
+        User user = new User();
+        user.setUsername("admin");
+        user.setFailedAttempts(3);
+
+        when(mockUserRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        when(mockSubject.isAuthenticated()).thenReturn(false).thenReturn(true);
+        when(mockSubject.getPrincipal()).thenReturn("admin");
+        when(mockSubject.hasRole(any())).thenReturn(false);
+
+        authService.login(new LoginRequest("admin", "admin123"));
+
+        verify(mockUserRepository).resetLoginAttempts("admin");
+    }
+
+    // ── logout() ──────────────────────────────────────────────────────────
 
     @Test
     void logout_callsSubjectLogout() {
@@ -122,7 +171,7 @@ class AuthServiceImplTest {
         verify(mockSubject).logout();
     }
 
-    // ── getCurrentUser() tests ────────────────────────────────────────────
+    // ── getCurrentUser() ──────────────────────────────────────────────────
 
     @Test
     void getCurrentUser_authenticated_returnsUserInfo() {
@@ -144,13 +193,10 @@ class AuthServiceImplTest {
     void getCurrentUser_notAuthenticated_throwsException() {
         when(mockSubject.isAuthenticated()).thenReturn(false);
 
-        assertThrows(
-                AuthenticationFailedException.class,
-                () -> authService.getCurrentUser()
-        );
+        assertThrows(AuthenticationFailedException.class, () -> authService.getCurrentUser());
     }
 
-    // ── isAuthenticated() tests ───────────────────────────────────────────
+    // ── isAuthenticated() ─────────────────────────────────────────────────
 
     @Test
     void isAuthenticated_returnsSubjectState() {

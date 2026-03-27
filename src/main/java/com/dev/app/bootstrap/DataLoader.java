@@ -1,4 +1,4 @@
-package com.dev.app;
+package com.dev.app.bootstrap;
 
 import com.dev.app.entities.Role;
 import com.dev.app.enums.RoleName;
@@ -10,6 +10,7 @@ import org.apache.shiro.authc.credential.DefaultPasswordService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,14 +23,17 @@ import java.util.Set;
  * <p>Users created:</p>
  * <ul>
  *   <li>admin / admin123 — roles: ADMIN + USER</li>
- *   <li>alice / ayoub123 — roles: USER</li>
+ *   <li>ayoub / ayoub123 — roles: USER</li>
  * </ul>
  *
  * <p>Passwords are stored using {@link DefaultPasswordService} which produces
  * a {@code $shiro2$SHA-512$50000$<salt>$<hash>} string — salted + iterated,
  * safe against rainbow-table and brute-force attacks.</p>
+ *
+ * <p>Only active when {@code app.seed-test-users=true} in application properties.</p>
  */
 @Component
+@ConditionalOnProperty(name = "app.seed-test-users", havingValue = "true")
 public class DataLoader implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataLoader.class);
@@ -55,10 +59,10 @@ public class DataLoader implements CommandLineRunner {
         Role userRole  = createRole(RoleName.USER);
 
         // Create users
-        createUser("admin", "admin123", Set.of(adminRole, userRole));
-        createUser("ayoub", "ayoub123", Set.of(userRole));
+        createUser("admin", "Admin123!", Set.of(adminRole, userRole));
+        createUser("ayoub", "Ayoub123!", Set.of(userRole));
 
-        log.info("Test users seeded: admin/admin123 (ADMIN,USER) — alice/ayoub123 (USER)");
+        log.info("Test users seeded: admin/Admin123! (ADMIN,USER) — ayoub/Ayoub123! (USER)");
     }
 
     private Role createRole(RoleName name) {

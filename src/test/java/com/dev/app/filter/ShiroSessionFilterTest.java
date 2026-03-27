@@ -1,7 +1,8 @@
-package com.dev.app.config;
+package com.dev.app.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.shiro.mgt.DefaultSecurityManager;
 import org.apache.shiro.realm.SimpleAccountRealm;
 import org.apache.shiro.util.ThreadContext;
@@ -10,8 +11,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -52,7 +55,7 @@ class ShiroSessionFilterTest {
 
         filter.doFilterInternal(request, response, chain);
 
-        verify(chain).doFilter(request, response);
+        verify(chain).doFilter(eq(request), any(ContentCachingResponseWrapper.class));
         assertEquals(200, response.getStatus());
     }
 
@@ -65,7 +68,7 @@ class ShiroSessionFilterTest {
 
         filter.doFilterInternal(request, response, chain);
 
-        verify(chain).doFilter(request, response);
+        verify(chain).doFilter(eq(request), any(ContentCachingResponseWrapper.class));
     }
 
     @Test
@@ -77,7 +80,7 @@ class ShiroSessionFilterTest {
 
         filter.doFilterInternal(request, response, chain);
 
-        verify(chain).doFilter(request, response);
+        verify(chain).doFilter(eq(request), any(ContentCachingResponseWrapper.class));
     }
 
     @Test
@@ -91,7 +94,7 @@ class ShiroSessionFilterTest {
 
         assertEquals(401, response.getStatus());
         assertTrue(response.getContentAsString().contains("Not authenticated"));
-        verify(chain, never()).doFilter(request, response);
+        verify(chain, never()).doFilter(any(), any());
     }
 
     @Test
@@ -104,7 +107,7 @@ class ShiroSessionFilterTest {
         filter.doFilterInternal(request, response, chain);
 
         assertEquals(401, response.getStatus());
-        verify(chain, never()).doFilter(request, response);
+        verify(chain, never()).doFilter(any(), any());
     }
 
     @Test

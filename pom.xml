@@ -6,28 +6,50 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.11</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.dev</groupId>
 	<artifactId>app</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
+	<version>1.0.0</version>
+	<name>spring-boot-app-sec-shiro</name>
+	<description>
+		Production-hardened reference implementation of Apache Shiro 2.x on Spring Boot 3.x (Jakarta EE).
+		Demonstrates session fixation prevention, account lockout, rate limiting, audit logging,
+		AOP-based authorization, and sensitive data masking — without shiro-web.
+	</description>
+	<url>https://github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>MIT License</name>
+			<url>https://opensource.org/licenses/MIT</url>
+			<distribution>repo</distribution>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<id>ELMAALMIA</id>
+			<name>Ayoub El Maalmia</name>
+			<url>https://github.com/ELMAALMIA</url>
+			<roles>
+				<role>maintainer</role>
+			</roles>
+		</developer>
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:git://github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API.git</developerConnection>
+		<tag>v1.0.0</tag>
+		<url>https://github.com/ELMAALMIA/spring-boot-App-Sec-Shiro-API</url>
 	</scm>
 	<properties>
 		<java.version>17</java.version>
+		<!--
+		  jackson-core 2.19.x is vulnerable to GHSA-72hv-8253-57qq (DoS via
+		  number-length constraint bypass in the async parser). The fix was
+		  released in 2.18.6, 2.21.1, and 3.1.0 — the 2.19.x branch never
+		  received a patch. Override Spring Boot's BOM to pin the safe 2.18.6 line.
+		-->
+		<jackson-bom.version>2.18.6</jackson-bom.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -39,7 +61,6 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- Bean validation (@NotBlank, @Valid, etc.) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
@@ -56,23 +77,27 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- shiro-core: SecurityManager, Realm, Subject, hashing (no servlet dependency) -->
+
 		<dependency>
 			<groupId>org.apache.shiro</groupId>
 			<artifactId>shiro-core</artifactId>
 			<version>2.1.0</version>
 		</dependency>
 
-		<!-- shiro-spring: LifecycleBeanPostProcessor, AuthorizationAttributeSourceAdvisor -->
-		<!-- NOTE: shiro-web and shiro-spring-boot-web-starter removed — they still use    -->
-		<!-- javax.servlet.Filter which is incompatible with Spring Boot 3.x (jakarta.*)   -->
+
 		<dependency>
 			<groupId>org.apache.shiro</groupId>
 			<artifactId>shiro-spring</artifactId>
 			<version>2.1.0</version>
 		</dependency>
 
-		<!-- Swagger UI / OpenAPI 3 — http://localhost:8081/swagger-ui.html -->
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+
+
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

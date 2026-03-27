@@ -1,0 +1,23 @@
+# Build output — never copy into the image
+target/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Documentation (not needed at runtime)
+docs/
+*.md
+
+# Maven wrapper binary (already in the Maven base image)
+.mvn/wrapper/maven-wrapper.jar
+
+# OS noise
+.DS_Store
+Thumbs.db
